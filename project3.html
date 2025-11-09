@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Temperature Converter</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial;padding:2rem;background:#f6f8fa}
+    .card{background:white;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.08);max-width:480px;margin:0 auto;padding:1.5rem}
+    label,select,input,button{display:block;width:100%;margin-top:.6rem}
+    .row{display:flex;gap:.5rem}
+    .row > *{flex:1}
+    .result{margin-top:1rem;padding:.8rem;border-radius:8px;background:#eef2ff}
+    small.error{color:#b00020}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Temperature Converter</h2>
+    <label>Value
+      <input id="value" type="text" placeholder="e.g. 100" />
+    </label>
+
+    <div class="row">
+      <label>From
+        <select id="from">
+          <option value="C">Celsius (°C)</option>
+          <option value="F">Fahrenheit (°F)</option>
+          <option value="K">Kelvin (K)</option>
+        </select>
+      </label>
+
+      <label>To
+        <select id="to">
+          <option value="C">Celsius (°C)</option>
+          <option value="F">Fahrenheit (°F)</option>
+          <option value="K">Kelvin (K)</option>
+        </select>
+      </label>
+    </div>
+
+    <button id="convert">Convert</button>
+    <div id="error" role="alert"></div>
+    <div class="result" id="result">Result will appear here.</div>
+  </div>
+
+  <script>
+    function cToF(c){ return (c * 9/5) + 32; }
+    function fToC(f){ return (f - 32) * 5/9; }
+    function cToK(c){ return c + 273.15; }
+    function kToC(k){ return k - 273.15; }
+
+    function convert(value, from, to){
+      // Normalize to Celsius, then to target
+      let c;
+      if(from === to) return value;
+      if(from === 'C') c = value;
+      if(from === 'F') c = fToC(value);
+      if(from === 'K') c = kToC(value);
+
+      if(to === 'C') return c;
+      if(to === 'F') return cToF(c);
+      if(to === 'K') return cToK(c);
+    }
+
+    document.getElementById('convert').addEventListener('click', () => {
+      const valStr = document.getElementById('value').value.trim();
+      const from = document.getElementById('from').value;
+      const to = document.getElementById('to').value;
+      const errorEl = document.getElementById('error');
+      const resultEl = document.getElementById('result');
+      errorEl.textContent = '';
+      resultEl.textContent = 'Converting…';
+
+      if(valStr === ''){
+        errorEl.innerHTML = '<small class="error">Please enter a temperature value.</small>';
+        resultEl.textContent = '—';
+        return;
+      }
+      // Allow comma or dot decimal
+      const normalized = valStr.replace(',', '.');
+      const num = Number(normalized);
+      if(Number.isNaN(num)){
+        errorEl.innerHTML = '<small class="error">Value must be a valid number.</small>';
+        resultEl.textContent = '—';
+        return;
+      }
+
+      const out = convert(num, from, to);
+      // Round sensibly: if it's close to integer show integer
+      const formatted = Math.abs(out - Math.round(out)) < 1e-9 ? Math.round(out) : Number(out.toFixed(6));
+      resultEl.textContent = `${formatted} ${to === 'C' ? '°C' : (to === 'F' ? '°F' : 'K')}`;
+    });
+
+    // allow Enter key
+    document.getElementById('value').addEventListener('keydown', (e) => {
+      if(e.key === 'Enter') document.getElementById('convert').click();
+    });
+  </script>
+</body>
+</html>

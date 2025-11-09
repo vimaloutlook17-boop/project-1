@@ -1,0 +1,125 @@
+<!-- Save as quiz-app.html -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Quiz App</title>
+<style>
+  :root{
+    --bg:#f4f7fb; --card:#ffffff; --accent:#4f46e5; --muted:#6b7280;
+    --good:#10b981; --bad:#ef4444; --neutral:#f3f4f6;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+    background:linear-gradient(180deg,#eef2ff 0%, #f8fafc 100%); color:#0f172a; padding:20px;
+  }
+  .app{
+    width:100%; max-width:900px; background:var(--card); border-radius:12px; box-shadow:0 8px 30px rgba(15,23,42,0.08);
+    overflow:hidden;
+  }
+  header{
+    display:flex; align-items:center; justify-content:space-between; padding:18px 20px; gap:12px;
+    border-bottom:1px solid #eef2ff;
+  }
+  header h1{font-size:1.05rem; margin:0}
+  .meta{display:flex; gap:12px; align-items:center; color:var(--muted); font-size:0.95rem}
+  .container{display:flex; gap:0; flex-wrap:wrap}
+  .pane{flex:1 1 420px; padding:24px}
+  .left{border-right:1px solid #f1f5f9; min-width:320px}
+  .question{font-size:1.1rem; font-weight:600; margin-bottom:12px}
+  .choices{display:grid; gap:10px}
+  .choice{
+    background:var(--neutral); padding:12px 14px; border-radius:8px; cursor:pointer; border:1px solid transparent;
+    display:flex; align-items:center; gap:10px; transition:all .15s ease;
+  }
+  .choice:hover{transform:translateY(-2px)}
+  .choice input{margin-right:8px}
+  .choice.selected{background:#eef2ff; border-color:rgba(79,70,229,0.2)}
+  .choice.locked{cursor:default; opacity:0.85}
+  .controls{display:flex; gap:10px; margin-top:18px; align-items:center; flex-wrap:wrap}
+  button{background:var(--accent); color:white; border:0; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:600}
+  button.secondary{background:transparent;color:var(--accent);border:1px solid rgba(79,70,229,0.12)}
+  .progress{height:10px;background:#eef2ff;border-radius:8px;overflow:hidden;margin-top:12px}
+  .progress > i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#7c3aed);transition:width .25s}
+  .right h3{margin-top:0}
+  .q-index{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px}
+  .q-btn{width:36px;height:36px;border-radius:8px;border:1px solid #eef2ff;background:transparent;color:var(--muted);cursor:pointer}
+  .q-btn.answered{background:#ecfeff;border-color:#cffafe;color:#065f46}
+  .timer{font-weight:700;color:#0f172a;background:#fff3cd;padding:6px 10px;border-radius:999px;border:1px solid #fde68a}
+  .score-card{background:#f8fafc;padding:12px;border-radius:8px;margin-top:12px}
+  .results{padding:18px}
+  .result-item{padding:12px;border-radius:8px;margin-bottom:10px;border:1px solid #eef2ff;background:#fff}
+  .correct{border-left:6px solid var(--good)}
+  .incorrect{border-left:6px solid var(--bad)}
+  footer{padding:14px 20px;border-top:1px solid #eef2ff;background:#fff}
+  .hidden{display:none}
+  @media (max-width:840px){
+    .container{flex-direction:column}
+    .left{border-right:0;border-bottom:1px solid #f1f5f9}
+  }
+</style>
+</head>
+<body>
+  <main class="app" role="application" aria-labelledby="title">
+    <header>
+      <h1 id="title">Quiz App</h1>
+      <div class="meta">
+        <div class="timer" id="timer" aria-live="polite">⏱ 05:00</div>
+        <div id="progressText">Question <strong id="current">1</strong>/<span id="total">10</span></div>
+      </div>
+    </header>
+
+    <section class="container" id="main">
+      <section class="pane left" aria-labelledby="qTitle">
+        <div class="question" id="qTitle">Loading question...</div>
+
+        <div class="choices" id="choices" role="list"></div>
+
+        <div class="controls">
+          <button id="prevBtn" class="secondary">Previous</button>
+          <button id="nextBtn" class="secondary">Next</button>
+          <button id="submitBtn">Submit Quiz</button>
+          <div style="margin-left:auto" id="statusMsg" aria-live="polite"></div>
+        </div>
+
+        <div class="progress" aria-hidden="true" style="margin-top:12px">
+          <i id="progBar"></i>
+        </div>
+      </section>
+
+      <aside class="pane right" aria-label="Sidebar">
+        <h3>Quiz Overview</h3>
+        <p class="small" id="desc">Answer the questions and submit before the timer ends. You can navigate using Next/Previous or the question grid.</p>
+
+        <div class="q-index" id="qIndex" aria-label="Question index"></div>
+
+        <div class="score-card" id="scoreCard">
+          <div>Answered: <strong id="answeredCount">0</strong></div>
+          <div style="margin-top:8px">High Scores:</div>
+          <ol id="highScores" style="padding-left:16px; margin-top:8px; color:var(--muted)"></ol>
+        </div>
+
+        <div style="margin-top:12px">
+          <label style="font-size:0.85rem;color:var(--muted)">Timer length (min)</label>
+          <select id="timerSelect" style="width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid #eef2ff;background:#fff">
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="15">15</option>
+            <option value="0">No timer</option>
+          </select>
+          <button id="restartBtn" class="secondary" style="margin-top:10px;width:100%">Restart Quiz</button>
+        </div>
+      </aside>
+    </section>
+
+    <section id="results" class="hidden results" aria-live="polite"></section>
+
+    <footer>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="color:var(--muted)">Built with ❤️ — Single-file demo</div>
+        <div>
+          <button id="reviewBtn" class="secondary hidden">Review Answers</button>
+        </div>

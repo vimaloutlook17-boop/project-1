@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Color Picker</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa4b2;--accent:#38bdf8}
+    *{box-sizing:border-box}
+    body{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;background:linear-gradient(180deg,#071126 0%, #0f1724 100%);color:#e6eef6;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px}
+    .wrap{width:980px;max-width:100%;display:grid;grid-template-columns:360px 1fr;gap:20px}
+    .card{background:rgba(255,255,255,0.03);padding:18px;border-radius:12px;box-shadow:0 6px 20px rgba(2,6,23,0.6)}
+    h1{margin:0 0 12px;font-size:20px}
+    .preview{height:140px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:18px}
+    .controls{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+    .row{display:flex;gap:10px;align-items:center}
+    input[type="color"]{width:56px;height:46px;padding:0;border:none;background:transparent;cursor:pointer}
+    .input-text{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+    button{cursor:pointer;padding:8px 10px;border:none;border-radius:8px;background:linear-gradient(90deg,var(--accent),#60a5fa);color:#062029;font-weight:600}
+    .palettes{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+    .chip{width:44px;height:44px;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.03);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .right{padding:18px}
+    .formats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .format{padding:12px;border-radius:8px;background:rgba(255,255,255,0.02);text-align:center}
+    small{color:var(--muted)}
+    .recent{display:flex;gap:8px;margin-top:10px}
+    .footer{margin-top:16px;display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px}
+    .controls .small{font-size:12px;color:var(--muted)}
+    @media (max-width:880px){.wrap{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Color Picker</h1>
+      <div id="preview" class="preview" style="background:#1e293b">#1E293B</div>
+
+      <div class="controls">
+        <div>
+          <label for="colorInput">Pick a color</label>
+          <div class="row">
+            <input id="colorInput" type="color" value="#1e293b" />
+            <input id="hexInput" class="input-text" type="text" value="#1E293B" />
+            <button id="copyHex">Copy</button>
+          </div>
+          <div class="small">Tip: You can type hex (e.g. <code>#ff00aa</code>) or use the color square.</div>
+        </div>
+
+        <div>
+          <label>Adjust (HSL)</label>
+          <div class="row">
+            <input id="hRange" type="range" min="0" max="360" value="210" />
+            <input id="sRange" type="range" min="0" max="100" value="36" />
+            <input id="lRange" type="range" min="0" max="100" value="17" />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="saveBtn">Save to recent</button>
+          <button id="downloadPNG">Download PNG</button>
+          <button id="eyeBtn">Use Eyedropper</button>
+          <button id="copyRGB">Copy RGB</button>
+        </div>
+
+        <div style="margin-top:10px">
+          <label>Recent colors</label>
+          <div id="recent" class="recent"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="card right">
+      <h1>Details</h1>
+
+      <div class="formats">
+        <div class="format">
+          <small>HEX</small>
+          <div id="hex" style="margin-top:8px;font-weight:700">#1E293B</div>
+        </div>
+        <div class="format">
+          <small>RGB</small>
+          <div id="rgb" style="margin-top:8px;font-weight:700">rgb(30,41,59)</div>
+        </div>
+        <div class="format">
+          <small>HSL</small>
+          <div id="hsl" style="margin-top:8px;font-weight:700">hsl(210,36%,17%)</div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px">
+        <label>Palette</label>
+        <div id="palette" class="palettes"></div>
+      </div>
+
+      <div class="footer">
+        <div>
+          <small>Contrast with white:</small>
+          <div id="contrast" style="font-weight:700">0</div>
+        </div>
+        <div>
+          <small>Export:</small>
+          <button id="exportJSON">Export JSON</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // Helper conversions and utilities
+    const toHex = (n) => n.toString(16).padStart(2,'0');
+    function rgbToHex(r,g,b){return '#'+toHex(r)+toHex(g)+toHex(b)}
+    function hexToRgb(hex){
+      hex = hex.replace('#','');
+      if(hex.length===3) hex = hex.split('').map(c=>c+c).join('');
+      const n=parseInt(hex,16);return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}
+    }
+    function rgbToHsl(r,g,b){r/=255;g/=255;b/=255;const max=Math.max(r,g,b),min=Math.min(r,g,b);let h,s,l=(max+min)/2;if(max===min){h=s=0}else{const d=max-min;s=l>0.5?d/(2-max-min):d/(max+min);switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break;}h/=6;}return{h:Math.round(h*360),s:Math.round(s*100),l:Math.round(l*100)}}
+    function hslToRgb(h,s,l){h/=360;s/=100;l/=100;let r,g,b;if(s===0){r=g=b=l}else{const hue2rgb=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p};const q=l<0.5?l*(1+s):l+s-l*s;const p=2*l-q;r=hue2rgb(p,q,h+1/3);g=hue2rgb(p,q,h);b=hue2rgb(p,q,h-1/3);}return{r:Math.round(r*255),g:Math.round(g*255),b:Math.round(b*255)}}
+    function luminance(r,g,b){const a=[r,g,b].map(v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)});return 0.2126*a[0]+0.7152*a[1]+0.0722*a[2]}
+    function contrastRatio(rgb1,rgb2){const L1=luminance(rgb1.r,rgb1.g,rgb1.b)+0.05;const L2=luminance(rgb2.r,rgb2.g,rgb2.b)+0.05;return (Math.max(L1,L2)/Math.min(L1,L2)).toFixed(2)}
+
+    // DOM
+    const colorInput = document.getElementById('colorInput');
+    const hexInput = document.getElementById('hexInput');
+    const preview = document.getElementById('preview');
+    const hexEl = document.getElementById('hex');
+    const rgbEl = document.getElementById('rgb');
+    const hslEl = document.getElementById('hsl');
+    const hRange = document.getElementById('hRange');
+    const sRange = document.getElementById('sRange');
+    const lRange = document.getElementById('lRange');
+    const saveBtn = document.getElementById('saveBtn');
+    const recentDiv = document.getElementById('recent');
+    const paletteDiv = document.getElementById('palette');
+    const copyHexBtn = document.getElementById('copyHex');
+    const copyRGBbtn = document.getElementById('copyRGB');
+    const downloadPNG = document.getElementById('downloadPNG');
+    const eyeBtn = document.getElementById('eyeBtn');
+    const contrastEl = document.getElementById('contrast');
+    const exportJSON = document.getElementById('exportJSON');
+
+    // State
+    let current = {hex:'#1E293B'};
+
+    // Load recent from localStorage
+    function loadRecent(){try{const data=JSON.parse(localStorage.getItem('recentColors')||'[]');return data}catch(e){return []}}
+    function saveRecent(arr){localStorage.setItem('recentColors',JSON.stringify(arr.slice(0,20)))}
+
+    function updateUIFromHex(hex){const rgb=hexToRgb(hex);const hsl=rgbToHsl(rgb.r,rgb.g,rgb.b);current={hex:hex.toUpperCase(),rgb,hsl};
+      preview.style.background = current.hex; preview.textContent = current.hex;
+      colorInput.value = current.hex;
+      hexInput.value = current.hex;
+      hexEl.textContent = current.hex;
+      rgbEl.textContent = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+      hslEl.textContent = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+      hRange.value = hsl.h; sRange.value = hsl.s; lRange.value = hsl.l;
+      updatePalette(current.hex);
+      updateContrast();
+    }
+
+    function updatePalette(hex){paletteDiv.innerHTML='';const base = hexToRgb(hex);const hsl = rgbToHsl(base.r,base.g,base.b);
+      const steps = [-30,-15,0,15,30];steps.forEach(offset=>{const nh = (hsl.h+offset+360)%360;const rgb=hslToRgb(nh,hsl.s,hsl.l);const h = rgbToHsl(rgb.r,rgb.g,rgb.b);const hex2 = rgbToHex(rgb.r,rgb.g,rgb.b);const d = document.createElement('div');d.className='chip';d.title=`${hex2}\n${h.h},${h.s}%,${h.l}%`;d.style.background = hex2;d.textContent='';d.addEventListener('click',()=>updateUIFromHex(hex2));paletteDiv.appendChild(d)})}
+
+    function updateContrast(){const white={r:255,g:255,b:255};const c = contrastRatio(current.rgb,white);contrastEl.textContent = c}
+
+    // Events
+    colorInput.addEventListener('input',e=>updateUIFromHex(e.target.value));
+    hexInput.addEventListener('change',e=>{
+      let v = e.target.value.trim(); if(!v.startsWith('#')) v='#'+v; if(/^#[0-9A-Fa-f]{3}$/.test(v)||/^#[0-9A-Fa-f]{6}$/.test(v)){updateUIFromHex(v)}else{alert('Please enter a valid hex (e.g. #ff00aa)')}
+    });
+
+    [hRange,sRange,lRange].forEach(el=>el.addEventListener('input',()=>{
+      const h=+hRange.value,s=+sRange.value,l=+lRange.value;const rgb=hslToRgb(h,s,l);const hex=rgbToHex(rgb.r,rgb.g,rgb.b);updateUIFromHex(hex);
+    }));
+
+    copyHexBtn.addEventListener('click',async ()=>{try{await navigator.clipboard.writeText(current.hex);copyHexBtn.textContent='Copied';setTimeout(()=>copyHexBtn.textContent='Copy',1200)}catch(e){alert('Copy failed') }});
+    copyRGBbtn.addEventListener('click',async ()=>{const text=`rgb(${current.rgb.r}, ${current.rgb.g}, ${current.rgb.b})`;try{await navigator.clipboard.writeText(text);copyRGBbtn.textContent='Copied';setTimeout(()=>copyRGBbtn.textContent='Copy RGB',1200)}catch(e){alert('Copy failed') }});
+
+    saveBtn.addEventListener('click',()=>{const arr=loadRecent();arr.unshift(current.hex);const unique=[...new Set(arr)];saveRecent(unique);renderRecent();});
+    function renderRecent(){recentDiv.innerHTML='';const arr=loadRecent();arr.slice(0,12).forEach(hex=>{const d=document.createElement('div');d.className='chip';d.style.background=hex;d.title=hex;d.addEventListener('click',()=>updateUIFromHex(hex));recentDiv.appendChild(d)})}
+
+    downloadPNG.addEventListener('click',()=>{
+      const canvas=document.createElement('canvas');canvas.width=600;canvas.height=300;const ctx=canvas.getContext('2d');ctx.fillStyle=current.hex;ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='rgba(255,255,255,0.9)';ctx.font='28px sans-serif';ctx.fillText(current.hex,20,50);const url=canvas.toDataURL('image/png');const a=document.createElement('a');a.href=url;a.download=(current.hex.replace('#','')||'color')+'.png';a.click();
+    });
+
+    exportJSON.addEventListener('click',()=>{const arr=loadRecent();const blob=new Blob([JSON.stringify(arr,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='colors.json';a.click();URL.revokeObjectURL(url);});
+
+    eyeBtn.addEventListener('click',async ()=>{
+      if(typeof EyeDropper === 'undefined'){alert('EyeDropper API not supported in this browser.');return}
+      try{const eye=new EyeDropper();const res=await eye.open();updateUIFromHex(res.sRGBHex);}catch(e){console.warn(e)}
+    });
+
+    // Init
+    (function(){renderRecent();updateUIFromHex(current.hex);}())
+
+    // Accessibility: keyboard shortcut C to copy hex when focused on body
+    document.body.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='c' && document.activeElement===document.body){navigator.clipboard && navigator.clipboard.writeText(current.hex).then(()=>{copyHexBtn.textContent='Copied';setTimeout(()=>copyHexBtn.textContent='Copy',1200)})}});
+  </script>
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Memory Game</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      padding: 0;
+      margin: 0;
+    }
+
+    body {
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-between;
+      width: 300px;
+      margin-bottom: 15px;
+      font-size: 1rem;
+    }
+
+    .game-container {
+      width: 350px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      perspective: 1000px;
+    }
+
+    .card {
+      position: relative;
+      width: 80px;
+      height: 80px;
+      transform-style: preserve-3d;
+      transition: transform 0.5s;
+      cursor: pointer;
+    }
+
+    .card.flip {
+      transform: rotateY(180deg);
+    }
+
+    .front,
+    .back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 2rem;
+      backface-visibility: hidden;
+    }
+
+    .front {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .back {
+      background: white;
+      color: #333;
+      transform: rotateY(180deg);
+    }
+
+    button {
+      margin-top: 15px;
+      background: white;
+      color: #764ba2;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #eee;
+    }
+
+    .win-message {
+      font-size: 1.5rem;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧠 Memory Game</h1>
+  <div class="stats">
+    <div>Moves: <span id="moves">0</span></div>
+    <div>Time: <span id="time">0s</span></div>
+  </div>
+  <div class="game-container" id="game-container"></div>
+  <button id="restart">🔁 Restart</button>
+  <div class="win-message" id="win-message"></div>
+
+  <script>
+    const emojis = ["🍎", "🍌", "🍇", "🍒", "🍉", "🍓", "🍍", "🥝"];
+    let cards = [...emojis, ...emojis];
+    let firstCard, secondCard;
+    let lockBoard = false;
+    let moves = 0;
+    let matched = 0;
+    let timer;
+    let time = 0;
+    let gameStarted = false;
+
+    const gameContainer = document.getElementById("game-container");
+    const movesDisplay = document.getElementById("moves");
+    const timeDisplay = document.getElementById("time");
+    const winMessage = document.getElementById("win-message");
+    const restartBtn = document.getElementById("restart");
+
+    // Shuffle cards
+    function shuffle(array) {
+      return array.sort(() => 0.5 - Math.random());
+    }
+
+    function startTimer() {
+      timer = setInterval(() => {
+        time++;
+        timeDisplay.textContent = `${time}s`;
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timer);
+    }
+
+    function createBoard() {
+      gameContainer.innerHTML = "";
+      shuffle(cards).forEach((emoji) => {
+        const card = document.createElement("div");
+        card.classList.add("card");
+        card.innerHTML = `
+          <div class="front"></div>
+          <div class="back">${emoji}</div>
+        `;
+        card.addEventListener("click", flipCard);
+        gameContainer.appendChild(card);
+      });
+    }
+
+    function flipCard() {
+      if (lockBoard || this === firstCard) return;
+      this.classList.add("flip");
+
+      if (!gameStarted) {
+        gameStarted = true;
+        startTimer();
+      }
+
+      if (!firstCard) {
+        firstCard = this;
+        return;
+      }
+
+      secondCard = this;
+      moves++;
+      movesDisplay.textContent = moves;
+
+      checkMatch();
+    }
+
+    function checkMatch() {
+      const isMatch =
+        firstCard.querySelector(".back").textContent ===
+        secondCard.querySelector(".back").textContent;
+
+      isMatch ? disableCards() : unflipCards();
+    }
+
+    function disableCards() {
+      firstCard.removeEventListener("click", flipCard);
+      secondCard.removeEventListener("click", flipCard);
+
+      resetBoard();
+      matched += 2;
+
+      if (matched === cards.length) {
+        stopTimer();
+        winMessage.textContent = `🎉 You won in ${moves} moves and ${time}s!`;
+      }
+    }
+
+    function unflipCards() {
+      lockBoard = true;
+      setTimeout(() => {
+        firstCard.classList.remove("flip");
+        secondCard.classList.remove("flip");
+        resetBoard();
+      }, 1000);
+    }
+
+    function resetBoard() {
+      [firstCard, secondCard, lockBoard] = [null, null, false];
+    }
+
+    function restartGame() {
+      stopTimer();
+      [moves, matched, time, gameStarted] = [0, 0, 0, false];
+      movesDisplay.textContent = moves;
+      time}
